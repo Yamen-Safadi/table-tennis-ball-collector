@@ -77,10 +77,11 @@ x = 0
 y = 0
 size = 0
 
+ball_detected = False
+
+
+
 def task1():
-
-    
-
 
     @event(robot.when_play)
     async def music(robot):
@@ -92,16 +93,21 @@ def task1():
             # No need of calling "await hand_over()" in this infinite loop, because robot methods are all called with await.
             global x
             global y
-            print("robot sees ball at: " +str(x) +" , " +str(y))
-
-            if x < 200:
-                await robot.turn_left(10)
-                await robot.wait(0.3)
-                
-            elif x > 250:
-                await robot.turn_left(-10)
-                await robot.wait(0.3)
+            global ball_detected
+            print("robot sees ball at: " +str(x) +" , " +str(y) + " ball detection " + str (ball_detected))
             
+            if ball_detected:
+                if x < 200:
+                    await robot.turn_left(10)
+                    await robot.wait(0.3)
+                    
+                elif x > 250:
+                    await robot.turn_left(-10)
+                    await robot.wait(0.3)
+
+                if y <  200:
+                    await robot.move(5) 
+                
             else:
                 await robot.wait(0.3)
 
@@ -121,6 +127,7 @@ def Ball_Tracking():
         global x
         global y
         global radius
+        global ball_detected
 	  
         in_rgb = q_rgb.tryGet()
         if in_rgb is not None:
@@ -147,6 +154,9 @@ def Ball_Tracking():
         cnts = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
         cnts = imutils.grab_contours(cnts)
         center = None
+
+
+
         # only proceed if at least one contour was found
         if len(cnts) > 0:
             # find the largest contour in the mask, then use
@@ -155,6 +165,8 @@ def Ball_Tracking():
             c = max(cnts, key=cv2.contourArea)
             ((x, y), radius) = cv2.minEnclosingCircle(c)
             M = cv2.moments(c)
+            ball_detected = True
+
             center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
             # only proceed if the radius meets a minimum size
             if radius > 10:
@@ -164,6 +176,8 @@ def Ball_Tracking():
                     (0, 255, 255), 2)
                 print(int(x))
                 cv2.circle(frame, center, 5, (0, 0, 255), -1)
+        else:
+            ball_detected = False 
         # update the points queue
         pts.appendleft(center)
         # loop over the set of tracked points
@@ -175,7 +189,8 @@ def Ball_Tracking():
             # otherwise, compute the thickness of the line and
             # draw the connecting lines
             thickness = int(np.sqrt(args["buffer"] / float(i + 1)) * 2.5)
-            cv2.line(frame, pts[i - 1], pts[i], (0, 0, 255), thickness)
+            # un-commnet next line to see trajectory 
+            #cv2.line(frame, pts[i - 1], pts[i], (0, 0, 255), thickness)
         # show the frame to our screen
         cv2.imshow("Frame", frame)
         key = cv2.waitKey(1)
